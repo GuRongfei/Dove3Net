@@ -242,6 +242,47 @@ class OrgDiscriminator(nn.Module):
         return x, xf, xb
 
 
+class NLayerDiscriminator(nn.Module):
+
+    def __init__(self, input_nc, ndf=64, n_layers=6, norm_layer=nn.BatchNorm2d):
+        """Construct a PatchGAN discriminator
+
+        Parameters:
+            input_nc (int)  -- the number of channels in input images
+            ndf (int)       -- the number of filters in the last conv layer
+            n_layers (int)  -- the number of conv layers in the discriminator
+            norm_layer      -- normalization layer
+        """
+        super(NLayerDiscriminator, self).__init__()
+        num_outputs = ndf * min(2 ** n_layers, 8)
+        self.D = OrgDiscriminator(input_nc, ndf, n_layers, norm_layer)
+        self.convl1 = spectral_norm(nn.Conv2d(num_outputs, num_outputs, kernel_size=1, stride=1))
+        self.relul1 = nn.LeakyReLU(0.2)
+        self.convl2 = spectral_norm(nn.Conv2d(num_outputs, num_outputs, kernel_size=1, stride=1))
+        self.relul2 = nn.LeakyReLU(0.2)
+        self.convl3 = nn.Conv2d(num_outputs, 1, kernel_size=1, stride=1)
+        self.convg3 = nn.Conv2d(num_outputs, 1, kernel_size=1, stride=1)
+
+    def forward(self, input, mask=None, gp=False, feat_loss=False):
+
+        x, xf, xb = self.D(input, mask)
+        feat_l, feat_g = torch.cat([xf, xb]), x
+        x = self.convg3(x)
+
+        sim = xf * xb
+        sim = self.convl1(sim)
+        sim = self.relul1(sim)
+        sim = self.convl2(sim)
+        sim = self.relul2(sim)
+        sim = self.convl3(sim)
+        sim_sum = sim
+        if not gp:
+            if feat_loss:
+                return x, sim_sum, feat_g, feat_l
+            return x, sim_sum
+        return (x + sim_sum) * 0.5
+
+
 class D_feature(nn.Module):
 
     def __init__(self, input_nc, ndf=64, n_layers=6, norm_layer=nn.BatchNorm2d):
@@ -338,47 +379,6 @@ class D_feature(nn.Module):
         #print(m)
 
         return x
-
-
-class NLayerDiscriminator(nn.Module):
-
-    def __init__(self, input_nc, ndf=64, n_layers=6, norm_layer=nn.BatchNorm2d):
-        """Construct a PatchGAN discriminator
-
-        Parameters:
-            input_nc (int)  -- the number of channels in input images
-            ndf (int)       -- the number of filters in the last conv layer
-            n_layers (int)  -- the number of conv layers in the discriminator
-            norm_layer      -- normalization layer
-        """
-        super(NLayerDiscriminator, self).__init__()
-        num_outputs = ndf * min(2 ** n_layers, 8)
-        self.D = OrgDiscriminator(input_nc, ndf, n_layers, norm_layer)
-        self.convl1 = spectral_norm(nn.Conv2d(num_outputs, num_outputs, kernel_size=1, stride=1))
-        self.relul1 = nn.LeakyReLU(0.2)
-        self.convl2 = spectral_norm(nn.Conv2d(num_outputs, num_outputs, kernel_size=1, stride=1))
-        self.relul2 = nn.LeakyReLU(0.2)
-        self.convl3 = nn.Conv2d(num_outputs, 1, kernel_size=1, stride=1)
-        self.convg3 = nn.Conv2d(num_outputs, 1, kernel_size=1, stride=1)
-
-    def forward(self, input, mask=None, gp=False, feat_loss=False):
-
-        x, xf, xb = self.D(input, mask)
-        feat_l, feat_g = torch.cat([xf, xb]), x
-        x = self.convg3(x)
-
-        sim = xf * xb
-        sim = self.convl1(sim)
-        sim = self.relul1(sim)
-        sim = self.convl2(sim)
-        sim = self.relul2(sim)
-        sim = self.convl3(sim)
-        sim_sum = sim
-        if not gp:
-            if feat_loss:
-                return x, sim_sum, feat_g, feat_l
-            return x, sim_sum
-        return (x + sim_sum) * 0.5
 
 
 class Discriminator(nn.Module):
@@ -684,8 +684,10 @@ class Dove3NetModel(BaseModel):
         self.optimizer_D1.step()  # update D's weights
         self.optimizer_D2.step()  # update D's weights
         # update G
-        self.set_requires_grad(self.netD1, False)  # D requires no gradients when optimizing G
+        """self.set_requires_grad(self.netD1, False)  # D requires no gradients when optimizing G
         self.set_requires_grad(self.netD2, False)  # D requires no gradients when optimizing G
         self.optimizer_G.zero_grad()  # set G's gradients to zero
         self.backward_G()  # calculate graidents for G
-        self.optimizer_G.step()  # udpate G's weights
+        self.optimizer_G.step()  # udpate G's weights"""
+
+

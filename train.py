@@ -11,14 +11,10 @@ if __name__ == '__main__':
     print('The number of training images = %d' % dataset_size)
 
     model = create_model(opt)      # create a model given opt.model and other options
-    print("grf2!!")
     model.setup(opt)               # regular setup: load and print networks; create schedulers
-    print("grf3!!")
     #visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
-    print("grf4!!")
     total_iters = 0                # the total number of training iterations
 
-    print("grf1!!!")
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
@@ -53,7 +49,7 @@ if __name__ == '__main__':
                 model.save_networks(save_suffix)
 
             iter_data_time = time.time()
-            if i > 10:
+            if i >= 1:
                 break
 
         if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs

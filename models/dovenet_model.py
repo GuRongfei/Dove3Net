@@ -326,6 +326,14 @@ class DoveNetModel(BaseModel):
         else:  # during test time, only load G
             self.model_names = ['G']
         # define networks (both generator and discriminator)
+        print('1: ', opt.input_nc)
+        print("2: ", opt.output_nc)
+        print("3: ", opt.ngf)
+        print("4: ", opt.netG)
+        print("5: ", opt.norm)
+        print("6: ", opt.no_dropout)
+        print("7: ", opt.init_type)
+        print("8: ", opt.init_gain)
         self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
                                       not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
         self.relu = nn.ReLU()
@@ -430,3 +438,5 @@ class DoveNetModel(BaseModel):
         self.optimizer_G.zero_grad()  # set G's gradients to zero
         self.backward_G()  # calculate graidents for G
         self.optimizer_G.step()  # udpate G's weights
+
+
